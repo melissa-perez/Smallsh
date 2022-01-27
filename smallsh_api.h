@@ -18,6 +18,12 @@
 #define MAX_CMD_LN_CHRS 2048
 
 
+struct command {
+	char* argList[MAX_ARGS];
+	char* inputFile;
+	char* outputFile;
+	bool isBackgroundProc;	
+};
 
 
 #endif
