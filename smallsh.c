@@ -23,12 +23,14 @@
     @return int
 */
 int main() {
-	int   childStatus;
-	char* varName = "PS1";
-	// We set the value of MYVAR to foo in the parent process
-	setenv(varName, ":", 0);
-	setenv("PS1", "my_new_shell>", 1);
-	execlp("bash", "bash", (char*)NULL);
+	char* userCommandInput = NULL;
+    struct command* commandStruct = NULL;
 
+    GetCommandInput(&userCommandInput);
+    ProcessCommandLine(userCommandInput, &commandStruct);
+
+
+    free(userCommandInput);
+    free(commandStruct);
 	return 0;
 }

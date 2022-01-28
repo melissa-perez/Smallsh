@@ -16,14 +16,20 @@
 
 #define MAX_ARGS 512
 #define MAX_CMD_LN_CHRS 2048
+#define PROMPT ":"
 
 
 struct command {
-	char* argList[MAX_ARGS];
-	char* inputFile;
-	char* outputFile;
-	bool isBackgroundProc;	
+	char*	cmd;
+	char*	argList[MAX_ARGS];
+	int		argListSize;
+	char*	inputFile;
+	char*	outputFile;
+	bool	isBackgroundProc;	
 };
+
+void GetCommandInput(char**);
+void ProcessCommandLine(char*, struct command**);
 
 
 #endif
