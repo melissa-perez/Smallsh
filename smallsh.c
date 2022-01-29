@@ -14,16 +14,16 @@
 
 
 /**
-    Main entry point of the movies_by_year program.
-    Functions in movies_by_year_api.c and documentation
-    for functions in movies_by_year_api.h.
+    Main entry point of the smallsh program.
+    Functions in smallsh.c and documentation
+    for functions in smallsh.h.
 
     @param int, argc
     @param const char*, argv
     @return int
 */
 int main() {
-	char* userCommandInput = NULL;
+    char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
 
     GetCommandInput(&userCommandInput);
@@ -32,5 +32,5 @@ int main() {
 
     free(userCommandInput);
     //free(commandStruct);
-	return 0;
+    return 0;
 }
