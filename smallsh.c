@@ -31,6 +31,6 @@ int main() {
 
 
     free(userCommandInput);
-    free(commandStruct);
+    //free(commandStruct);
 	return 0;
 }

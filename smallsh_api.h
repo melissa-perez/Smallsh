@@ -1,6 +1,7 @@
 #ifndef FUNCTIONS_H_INCLUDED
 #define FUNCTIONS_H_INCLUDED
 
+#include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -30,6 +31,6 @@ struct command {
 
 void GetCommandInput(char**);
 void ProcessCommandLine(char*, struct command**);
-
+bool CheckForCommentLine(char*);
 
 #endif
