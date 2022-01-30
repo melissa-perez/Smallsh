@@ -111,7 +111,7 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
 
     int tokenIndex = 0, expTokenIndex = 0, charsRead = 0;
     while (tokenIndex < oldLength) {
-        if (strcspn(token, VAR_EXPR) > 0) {
+        if (expCount > 0) {
             while (charsRead < strcspn(token, VAR_EXPR)) {
                 (*expTokenAddr)[expTokenIndex] = token[charsRead];
                 expTokenIndex++;
@@ -122,6 +122,7 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
             strcat(*expTokenAddr, pidString);
             expTokenIndex += strlen(pidString);
             token += tokenIndex;
+            expCount -= 1;
         }
         else {
             while (tokenIndex < oldLength) {
