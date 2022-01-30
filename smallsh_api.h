@@ -18,6 +18,7 @@
 #define MAX_ARGS 512
 #define MAX_CMD_LN_CHRS 2048
 #define PROMPT ":"
+#define VAR_EXPR "$$"
 
 
 struct command {
@@ -32,5 +33,5 @@ struct command {
 void GetCommandInput(char**);
 void ProcessCommandLine(char*, struct command**);
 bool CheckForCommentLine(char*);
-
+int CheckForVariableExpression(char*);
 #endif

@@ -11,7 +11,6 @@ void GetCommandInput(char** userInputAddr) {
     return;
 }
 
-
 void ProcessCommandLine(char* userCommandLine,
     struct command** userStructAddr) {
     // max length of characters for command line is 2048
@@ -28,6 +27,7 @@ void ProcessCommandLine(char* userCommandLine,
 
     while (lineToken != NULL) {
         printf("%s\n", lineToken);
+        CheckForVariableExpression(lineToken);
         
         if (firstCommand) {
             // at this point we should have a command
@@ -62,7 +62,6 @@ void ProcessCommandLine(char* userCommandLine,
         }
         lineToken = strtok_r(NULL, " \r\t\n\v\f", &linePtr);
     }
-
     return;
 }
 
@@ -71,8 +70,7 @@ bool CheckForCommentLine(char* token) {
     if ((token != NULL) && (token[0] == '\0')) {
         printf("token is empty\n");
     }
-    if (token == NULL) printf("token is null\n");
-    
+    if (token == NULL) printf("token is null\n");   
     return (
             (token == NULL) ||
             ((token != NULL) && (token[0] == '\0')) ||  
@@ -80,3 +78,12 @@ bool CheckForCommentLine(char* token) {
         );
 }
 
+int CheckForVariableExpression(char* token) {
+    int exprCount = 0;
+    while ((token = strstr(token, VAR_EXPR))) {
+        exprCount++;
+        token += strlen(VAR_EXPR);
+    }
+    printf("%s occurs %d times \n", VAR_EXPR, exprCount);
+    return exprCount;
+}
