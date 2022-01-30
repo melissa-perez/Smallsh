@@ -30,8 +30,11 @@ struct command {
 	bool	isBackgroundProc;	
 };
 
-void GetCommandInput(char**);
-void ProcessCommandLine(char*, struct command**);
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
+char* ExpandVariableExpression(char* token);
+void GetCommandInput(char**);
+void GetPidString(char**);
+void ProcessCommandLine(char*, struct command**);
+
 #endif

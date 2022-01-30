@@ -28,7 +28,7 @@ void ProcessCommandLine(char* userCommandLine,
     while (lineToken != NULL) {
         printf("%s\n", lineToken);
         CheckForVariableExpression(lineToken);
-        
+        ExpandVariableExpression(lineToken);
         if (firstCommand) {
             // at this point we should have a command
             (*userStructAddr)->cmd = calloc(strlen(lineToken) + 1,
@@ -80,10 +80,31 @@ bool CheckForCommentLine(char* token) {
 
 int CheckForVariableExpression(char* token) {
     int exprCount = 0;
+    // counts how many times a variable expression appears in the command
     while ((token = strstr(token, VAR_EXPR))) {
-        exprCount++;
+        ++exprCount;
         token += strlen(VAR_EXPR);
     }
     printf("%s occurs %d times \n", VAR_EXPR, exprCount);
     return exprCount;
+}
+
+char* ExpandVariableExpression(char* token) {
+    char* pidString = NULL;
+    GetPidString(&pidString);
+
+
+    free(pidString);
+    return NULL;
+}
+
+
+void GetPidString(char** pidStringAddr) {
+    pid_t processID = getpid();
+    // get the number of bytes needed for pid string
+    int procIDLength = snprintf(NULL, 0, "%u", processID);
+    *pidStringAddr = calloc(procIDLength + 1, sizeof(char));
+    sprintf(*pidStringAddr, "%u", processID);
+    printf("The pid string is %s\n", *pidStringAddr);
+    return;
 }
