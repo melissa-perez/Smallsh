@@ -19,6 +19,9 @@ void ProcessCommandLine(char* userCommandLine,
     char* linePtr = NULL;
     char* lineToken = strtok_r(userCommandLine, " \r\t\n\v\f", &linePtr);
     bool firstCommand = true;
+    int expansionCount = 0;
+    //char* expPtr = NULL;
+    char* expToken = NULL;
     // check to ignore comment/blank lines
     if (CheckForCommentLine(lineToken)) return;
 
@@ -26,9 +29,14 @@ void ProcessCommandLine(char* userCommandLine,
     (*userStructAddr)->argListSize = 0;
 
     while (lineToken != NULL) {
-        printf("%s\n", lineToken);
-        CheckForVariableExpression(lineToken);
-        ExpandVariableExpression(lineToken);
+        printf("Before expansion(if needed): %s\n", lineToken);
+        expansionCount = CheckForVariableExpression(lineToken);
+
+        if (expansionCount > 0) {
+            ExpandVariableExpression(expansionCount, lineToken, &expToken);
+
+            lineToken = expToken;
+        }
         if (firstCommand) {
             // at this point we should have a command
             (*userStructAddr)->cmd = calloc(strlen(lineToken) + 1,
@@ -37,13 +45,13 @@ void ProcessCommandLine(char* userCommandLine,
             firstCommand = false;
         }             
         else if (strcmp(lineToken, ">") == 0) {
-            lineToken = strtok_r(NULL, " ", &linePtr);
+            lineToken = strtok_r(NULL, " \r\t\n\v\f", &linePtr);
             (*userStructAddr)->outputFile = calloc(strlen(lineToken) + 1,
                 sizeof(char));
             strcpy((*userStructAddr)->outputFile, lineToken);
         }
         else if (strcmp(lineToken, "<") == 0) {
-            lineToken = strtok_r(NULL, " ", &linePtr);
+            lineToken = strtok_r(NULL, " \r\t\n\v\f", &linePtr);
             (*userStructAddr)->inputFile = calloc(strlen(lineToken) + 1,
                 sizeof(char));
             strcpy((*userStructAddr)->inputFile, lineToken);
@@ -89,13 +97,44 @@ int CheckForVariableExpression(char* token) {
     return exprCount;
 }
 
-char* ExpandVariableExpression(char* token) {
+void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
     char* pidString = NULL;
     GetPidString(&pidString);
+    
+    // need to calculate space for new string: old length - expression occr + 
+    int newLength = strlen(token) - (strlen(VAR_EXPR) * expCount)
+        + (strlen(pidString) * expCount);
+    
+    int oldLength = strlen(token);
+    *(expTokenAddr) = calloc(newLength + 1,
+        sizeof(char));
 
-
+    int tokenIndex = 0, expTokenIndex = 0, charsRead = 0;
+    while (tokenIndex < oldLength) {
+        if (strcspn(token, VAR_EXPR) > 0) {
+            while (charsRead < strcspn(token, VAR_EXPR)) {
+                (*expTokenAddr)[expTokenIndex] = token[charsRead];
+                expTokenIndex++;
+                tokenIndex++;
+                charsRead++;
+            }
+            tokenIndex += strlen(VAR_EXPR);
+            strcat(*expTokenAddr, pidString);
+            expTokenIndex += strlen(pidString);
+            token += tokenIndex;
+        }
+        else {
+            while (tokenIndex < oldLength) {
+                (*expTokenAddr)[expTokenIndex] = token[charsRead];
+                expTokenIndex++;
+                tokenIndex++;
+                charsRead++;
+            }
+        }
+        charsRead = 0;
+    }
     free(pidString);
-    return NULL;
+    return;
 }
 
 
