@@ -32,6 +32,7 @@ struct command {
 
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
+void Destructor(struct command*);
 void ExpandVariableExpression(int, char*, char**);
 void GetCommandInput(char**);
 void GetPidString(char**);
