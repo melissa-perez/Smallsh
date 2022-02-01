@@ -28,7 +28,7 @@ int main() {
 
     GetCommandInput(&userCommandInput);
     ProcessCommandLine(userCommandInput, &commandStruct);
-
+    RunCommand(commandStruct);
 
     free(userCommandInput);
     Destructor(commandStruct);

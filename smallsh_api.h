@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -19,7 +20,12 @@
 #define MAX_CMD_LN_CHRS 2048
 #define PROMPT ":"
 #define VAR_EXPR "$$"
-
+#define HOME "HOME"
+#define MAX_PROC 25
+ 
+static int bgProc[MAX_PROC];
+static int currNoOfProcs;
+volatile sig_atomic_t flag;
 
 struct command {
 	char*	cmd;
@@ -30,12 +36,21 @@ struct command {
 	bool	isBackgroundProc;	
 };
 
+//struct sigaction SIGINIT_Action = { 0 };
+//struct sigaction SIGTSTP_Action = { 0 };
+
+
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
+void CDCommand(struct command*);
 void Destructor(struct command*);
+void ExitCommand(void);
 void ExpandVariableExpression(int, char*, char**);
 void GetCommandInput(char**);
 void GetPidString(char**);
+void Handle_SIGINT(int);
+void Handle_SIGTSTP(int);
 void ProcessCommandLine(char*, struct command**);
+void RunCommand(struct command*);
 
 #endif

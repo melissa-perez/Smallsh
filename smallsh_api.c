@@ -2,10 +2,10 @@
 
 bool CheckForCommentLine(char* token) {
     // check if token is empty, comment line, or null
-    if ((token != NULL) && (token[0] == '\0')) {
+    /*if ((token != NULL) && (token[0] == '\0')) {
         printf("token is empty\n");
     }
-    if (token == NULL) printf("token is null\n");   
+    if (token == NULL) printf("token is null\n");   */
     return (
             (token == NULL) ||
             ((token != NULL) && (token[0] == '\0')) ||  
@@ -20,8 +20,25 @@ int CheckForVariableExpression(char* token) {
         ++exprCount;
         token += strlen(VAR_EXPR);
     }
-    printf("%s occurs %d times \n", VAR_EXPR, exprCount);
+    //printf("%s occurs %d times \n", VAR_EXPR, exprCount);
     return exprCount;
+}
+
+void CDCommand(struct command* commandStruct) {
+    // attempt to change directory
+    int chdirResult = (commandStruct->argListSize == 0) ? chdir(getenv(HOME)) :
+        chdir(commandStruct->argList[0]);
+    
+    if (chdirResult == -1) {
+        // errno set to 2 on failure
+        int errsv = errno;
+        if (errsv == 2) perror("chdir");
+    }
+    /*else {
+        printf("Home is %s\n", getenv(HOME));
+        printf("new wd is: %s\n", get_current_dir_name());
+    }*/
+    return;
 }
 
 void Destructor(struct command* commandStruct) {
@@ -86,6 +103,10 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
     return;
 }
 
+void ExitCommand(void) {
+    return;
+}
+
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
     size_t inputLength = 0;
@@ -109,6 +130,10 @@ void GetPidString(char** pidStringAddr) {
     sprintf(*pidStringAddr, "%u", processID);
     printf("The pid string is %s\n", *pidStringAddr);
     return;
+}
+
+void Handle_SIGTSTP(int a) {
+    //char* 
 }
 
 void ProcessCommandLine(char* userCommandLine,
@@ -178,3 +203,21 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
+void RunCommand(struct command* commandStruct) {
+    // determine how to handle the first command given
+    // cd, exit, status, or fork to exec
+    if ((strcmp(commandStruct->cmd, "exit") == 0)) {
+        printf("the command is exit\n");
+    }
+    else if ((strcmp(commandStruct->cmd, "status") == 0)) {
+        printf("the command is status\n");
+    }
+    else if ((strcmp(commandStruct->cmd, "cd") == 0)) {
+        CDCommand(commandStruct);
+    }
+    else {
+        printf("something else, forking this command\n");
+    }
+
+    return;
+}
