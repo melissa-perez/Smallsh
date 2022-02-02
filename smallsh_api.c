@@ -104,7 +104,22 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
 }
 
 void ExitCommand(void) {
-    return;
+    // no pids -- program ends normally
+    if (backgroundProcessesCount == 0) exit(EXIT_SUCCESS);
+    // go through array and clear out pids forcefully
+    for (int i = 0; i < backgroundProcessesCount; ++i) {
+        kill(backgroundProcessesPIDS[i], SIGTERM);
+        sleep(5);
+        int currChildStatus;
+        waitpid(backgroundProcessesPIDS[i], &currChildStatus, WNOHANG);
+        if (currChildStatus == 0) {
+            kill(backgroundProcessesPIDS[i], SIGKILL);
+            waitpid(backgroundProcessesPIDS[i], &currChildStatus, 0);
+        }
+        backgroundProcessesPIDS[i] = 0;
+    }
+    // killing running pids is abnormal
+    exit(EXIT_FAILURE);
 }
 
 void GetCommandInput(char** userInputAddr) {
@@ -203,11 +218,14 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
-void RunCommand(struct command* commandStruct, int lastStatus) {
+void RunCommand(char* userCommandInput, struct command* commandStruct, int lastStatus) {
     // determine how to handle the first command given
     // cd, exit, status, or fork to exec
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
-        printf("the command is exit\n");
+        // can't pass args to exit, killing smallsh, clear data 
+        free(userCommandInput);
+        Destructor(commandStruct);
+        ExitCommand();
     }
     else if ((strcmp(commandStruct->cmd, "status") == 0)) {
         StatusCommand(lastStatus);     
