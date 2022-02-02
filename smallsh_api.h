@@ -5,13 +5,14 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h> // for waitpid
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -23,9 +24,10 @@
 #define HOME "HOME"
 #define MAX_PROC 25
  
-static int bgProc[MAX_PROC];
-static int currNoOfProcs;
-volatile sig_atomic_t flag;
+//static int bgProc[MAX_PROC];
+//static int currNoOfProcs;
+//volatile sig_atomic_t flag;
+
 
 struct command {
 	char*	cmd;
@@ -48,9 +50,9 @@ void ExitCommand(void);
 void ExpandVariableExpression(int, char*, char**);
 void GetCommandInput(char**);
 void GetPidString(char**);
-void Handle_SIGINT(int);
-void Handle_SIGTSTP(int);
+//void Handle_SIGINT(int);
+//void Handle_SIGTSTP(int);
 void ProcessCommandLine(char*, struct command**);
-void RunCommand(struct command*);
-
+void RunCommand(struct command*, int);
+void StatusCommand(int);
 #endif

@@ -203,14 +203,14 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
-void RunCommand(struct command* commandStruct) {
+void RunCommand(struct command* commandStruct, int lastStatus) {
     // determine how to handle the first command given
     // cd, exit, status, or fork to exec
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
         printf("the command is exit\n");
     }
     else if ((strcmp(commandStruct->cmd, "status") == 0)) {
-        printf("the command is status\n");
+        StatusCommand(lastStatus);     
     }
     else if ((strcmp(commandStruct->cmd, "cd") == 0)) {
         CDCommand(commandStruct);
@@ -219,5 +219,13 @@ void RunCommand(struct command* commandStruct) {
         printf("something else, forking this command\n");
     }
 
+    return;
+}
+
+void StatusCommand(int status) {
+    if (status == -2) return exit(0);
+    else if (WIFEXITED(status)) printf("exit value %d\n", WEXITSTATUS(status));
+    else if (WIFSIGNALED(status)) printf("terminated by signal %d\n", WTERMSIG(status));
+    fflush(stdout);
     return;
 }

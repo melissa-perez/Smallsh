@@ -25,10 +25,11 @@
 int main() {
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
+    int lastFGStatus = -2;
 
     GetCommandInput(&userCommandInput);
     ProcessCommandLine(userCommandInput, &commandStruct);
-    RunCommand(commandStruct);
+    RunCommand(commandStruct, lastFGStatus);
 
     free(userCommandInput);
     Destructor(commandStruct);
