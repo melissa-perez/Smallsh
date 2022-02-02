@@ -28,10 +28,10 @@ int main() {
     int lastFGStatus = -2;
 
     GetCommandInput(&userCommandInput);
-    ProcessCommandLine(userCommandInput, &commandStruct);
-    RunCommand(commandStruct, lastFGStatus);
+    //ProcessCommandLine(userCommandInput, &commandStruct);
+    //RunCommand(commandStruct, lastFGStatus);
 
     free(userCommandInput);
-    Destructor(commandStruct);
+    //Destructor(commandStruct);
     return 0;
 }

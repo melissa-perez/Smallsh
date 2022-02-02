@@ -109,7 +109,7 @@ void ExitCommand(void) {
 
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
-    size_t inputLength = 0;
+    size_t inputLength = 2048;
     // freed in main
     *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
     printf("%s ", PROMPT);
@@ -223,7 +223,7 @@ void RunCommand(struct command* commandStruct, int lastStatus) {
 }
 
 void StatusCommand(int status) {
-    if (status == -2) return exit(0);
+    if (status == -2) exit(EXIT_SUCCESS);
     else if (WIFEXITED(status)) printf("exit value %d\n", WEXITSTATUS(status));
     else if (WIFSIGNALED(status)) printf("terminated by signal %d\n", WTERMSIG(status));
     fflush(stdout);
