@@ -244,7 +244,7 @@ int StatusCommand(int status) {
 
 void OtherCommand(int* resultStatus, struct command* commandStruct) {
     int otherCommStatus;
-    printf("Parent process's pid = %d\n", getpid());
+    //printf("Parent process's pid = %d\n", getpid());
     int newArgSize = commandStruct->argListSize + 2;
     char* newargv[newArgSize];
     newargv[newArgSize - 1] = NULL;
@@ -261,21 +261,21 @@ void OtherCommand(int* resultStatus, struct command* commandStruct) {
     }
     else if (otherCommChildPID == 0) {
         // Child process executes this branch
-        printf("CHILD(%d) running %s command\n", getpid(), commandStruct->cmd);
-
+        //printf("CHILD(%d) running %s command\n", getpid(), commandStruct->cmd);
         execvp(commandStruct->cmd, newargv);
-        printf("error error");
-        // exec only returns if there is an error
-        int errsv = errno;
-        if (errsv == -1) perror("execvp");
+        perror(commandStruct->cmd);
+        exit(1);
     }
     else {
         // The parent process executes this branch
-        printf("Child's pid = %d\n", otherCommChildPID);
+        //printf("Child's pid = %d\n", otherCommChildPID);
         // WNOHANG specified. If the child hasn't terminated, waitpid will immediately return with value 0
         otherCommChildPID = waitpid(otherCommChildPID, &otherCommStatus, 0);
-        printf("In the parent process waitpid returned value %d\n", otherCommChildPID);
+        //printf("In the parent process waitpid returned value %d\n", otherCommChildPID);
     }
-    printf("The process with pid %d is returning from main\n", getpid());
+    *resultStatus = otherCommStatus;
+    //StatusCommand(*resultStatus);
+
+    //printf("The process with pid %d is returning from main\n", getpid());
     return;
 }
