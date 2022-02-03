@@ -24,8 +24,8 @@
 #define HOME "HOME"
 #define MAX_PROC 25
  
-static int backgroundProcessesPIDS[MAX_PROC];
-static int backgroundProcessesCount;
+//static int backgroundProcessesPIDS[MAX_PROC];
+//static int backgroundProcessesCount;
 //volatile sig_atomic_t flag;
 
 
@@ -53,6 +53,7 @@ void GetPidString(char**);
 //void Handle_SIGINT(int);
 //void Handle_SIGTSTP(int);
 void ProcessCommandLine(char*, struct command**);
-void RunCommand(char*, struct command*, int);
-void StatusCommand(int);
+void RunCommand(char*, struct command*, int*);
+int StatusCommand(int);
+void OtherCommand(int*, struct command*);
 #endif

@@ -2,10 +2,6 @@
 
 bool CheckForCommentLine(char* token) {
     // check if token is empty, comment line, or null
-    /*if ((token != NULL) && (token[0] == '\0')) {
-        printf("token is empty\n");
-    }
-    if (token == NULL) printf("token is null\n");   */
     return (
             (token == NULL) ||
             ((token != NULL) && (token[0] == '\0')) ||  
@@ -20,7 +16,6 @@ int CheckForVariableExpression(char* token) {
         ++exprCount;
         token += strlen(VAR_EXPR);
     }
-    //printf("%s occurs %d times \n", VAR_EXPR, exprCount);
     return exprCount;
 }
 
@@ -34,14 +29,11 @@ void CDCommand(struct command* commandStruct) {
         int errsv = errno;
         if (errsv == 2) perror("chdir");
     }
-    /*else {
-        printf("Home is %s\n", getenv(HOME));
-        printf("new wd is: %s\n", get_current_dir_name());
-    }*/
     return;
 }
 
 void Destructor(struct command* commandStruct) {
+    // free up anything that is initialized
     if (commandStruct->cmd != NULL) free(commandStruct->cmd);
     if (commandStruct->inputFile != NULL) free(commandStruct->inputFile);
     if (commandStruct->outputFile != NULL) free(commandStruct->outputFile);
@@ -103,7 +95,7 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
     return;
 }
 
-void ExitCommand(void) {
+/*void ExitCommand(void) {
     // no pids -- program ends normally
     if (backgroundProcessesCount == 0) exit(EXIT_SUCCESS);
     // go through array and clear out pids forcefully
@@ -120,15 +112,16 @@ void ExitCommand(void) {
     }
     // killing running pids is abnormal
     exit(EXIT_FAILURE);
-}
+}*/
 
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
     size_t inputLength = 2048;
-    // freed in main
+    // freed in main/exit
     *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
     printf("%s ", PROMPT);
     fflush(stdout);
+    // get user input, does not work for empty in MSVS
     getline(&input, &inputLength, stdin);
     input[strcspn(input, "\n")] = '\0';
     strcpy(*userInputAddr, input);
@@ -143,7 +136,6 @@ void GetPidString(char** pidStringAddr) {
     // freed in expand variable
     *pidStringAddr = calloc(procIDLength + 1, sizeof(char));
     sprintf(*pidStringAddr, "%u", processID);
-    printf("The pid string is %s\n", *pidStringAddr);
     return;
 }
 
@@ -176,6 +168,7 @@ void ProcessCommandLine(char* userCommandLine,
             lineToken = expToken;
             printf("After expansion(if needed): %s\n", lineToken);
         }
+        fflush(stdout);
         if (firstCommand) {
             // at this point we should have a command
             (*userStructAddr)->cmd = calloc(strlen(lineToken) + 1,
@@ -208,7 +201,7 @@ void ProcessCommandLine(char* userCommandLine,
             }
         }
         if (expToken != NULL) {
-            // string coped over in while loop
+            // string copied over in while loop
             free(expToken);
             expToken = NULL;
         }
@@ -218,32 +211,71 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
-void RunCommand(char* userCommandInput, struct command* commandStruct, int lastStatus) {
+void RunCommand(char* userCommandInput, struct command* commandStruct, int* lastStatus) {
     // determine how to handle the first command given
     // cd, exit, status, or fork to exec
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
         // can't pass args to exit, killing smallsh, clear data 
         free(userCommandInput);
         Destructor(commandStruct);
-        ExitCommand();
+        //ExitCommand();
     }
     else if ((strcmp(commandStruct->cmd, "status") == 0)) {
-        StatusCommand(lastStatus);     
+        StatusCommand(*lastStatus);     
     }
     else if ((strcmp(commandStruct->cmd, "cd") == 0)) {
         CDCommand(commandStruct);
     }
     else {
-        printf("something else, forking this command\n");
+        OtherCommand(lastStatus, commandStruct);
+    
     }
-
     return;
 }
 
-void StatusCommand(int status) {
-    if (status == -2) exit(EXIT_SUCCESS);
-    else if (WIFEXITED(status)) printf("exit value %d\n", WEXITSTATUS(status));
+int StatusCommand(int status) {
+    // check if termination by signal or exit status
+    if (WIFEXITED(status)) printf("exit value %d\n", WEXITSTATUS(status));
     else if (WIFSIGNALED(status)) printf("terminated by signal %d\n", WTERMSIG(status));
     fflush(stdout);
+    // if neither, then ran before fg, return 0
+    return EXIT_SUCCESS;
+}
+
+void OtherCommand(int* resultStatus, struct command* commandStruct) {
+    int otherCommStatus;
+    printf("Parent process's pid = %d\n", getpid());
+    int newArgSize = commandStruct->argListSize + 2;
+    char* newargv[newArgSize];
+    newargv[newArgSize - 1] = NULL;
+    // Replace the current program with cmd
+    newargv[0] = commandStruct->cmd;
+    for (int i = 0; i < commandStruct->argListSize; ++i) {
+        newargv[i + 1] = commandStruct->argList[i];
+    }
+    pid_t otherCommChildPID = fork();
+    
+    // this is for foreground only
+    if (otherCommChildPID == -1) {
+        perror("fork() failed!");
+    }
+    else if (otherCommChildPID == 0) {
+        // Child process executes this branch
+        printf("CHILD(%d) running %s command\n", getpid(), commandStruct->cmd);
+
+        execvp(commandStruct->cmd, newargv);
+        printf("error error");
+        // exec only returns if there is an error
+        int errsv = errno;
+        if (errsv == -1) perror("execvp");
+    }
+    else {
+        // The parent process executes this branch
+        printf("Child's pid = %d\n", otherCommChildPID);
+        // WNOHANG specified. If the child hasn't terminated, waitpid will immediately return with value 0
+        otherCommChildPID = waitpid(otherCommChildPID, &otherCommStatus, 0);
+        printf("In the parent process waitpid returned value %d\n", otherCommChildPID);
+    }
+    printf("The process with pid %d is returning from main\n", getpid());
     return;
 }
