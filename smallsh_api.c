@@ -5,6 +5,7 @@ bool CheckForCommentLine(char* token) {
     return (
             (token == NULL) ||
             ((token != NULL) && (token[0] == '\0')) ||  
+            ((token != NULL) && (token[0] == '#')) ||
             (strcmp(token, "#") == 0)
         );
 }
@@ -272,8 +273,15 @@ void OtherCommand(int* resultStatus,
             ChildFork(commandStruct);
             break;
         default:
-            // wait for child process to finish
-            childPid = waitpid(childPid, &childStatus, 0);
+            if (commandStruct->isBackgroundProc) {
+                printf("background pid is %ld", childPid);
+                fflush(stdout);
+                ;;;;
+            }
+            else {
+                // wait for child process to finish
+                childPid = waitpid(childPid, &childStatus, 0);
+            }
     }
     *resultStatus = childStatus;
     return;
@@ -295,30 +303,28 @@ void ChildFork(struct command* commandStruct) {
     if (commandStruct->inputFile != NULL) {
         VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
         sourceResult = dup2(sourceFD, 0);
-        close(sourceFD);
         if (sourceResult < 0) {
             perror("source dup2()");
             exit(2);
         }
+        fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
     }
 
     if (commandStruct->outputFile != NULL) {
         VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
         outResult = dup2(targetFD, 1);
-        close(targetFD);
         if (outResult < 0) {
             perror("target dup2()");
             exit(2);
         }
+        fcntl(targetFD, F_SETFD, FD_CLOEXEC);
     }
-
     // attempt to execute other command
     execvp(commandStruct->cmd, newargv);
     // beyond this point, if command fails print error and set exit 1
     // exit 1 used in status 
     perror(commandStruct->cmd);
     exit(1);
-
     return;
 }
 
