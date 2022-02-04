@@ -25,14 +25,18 @@
 int main() {
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
-    int lastFGStatus = -2;
+    int lastChildStatus = EXIT_SUCCESS;
     //backgroundProcessesCount = 0;
 
-    GetCommandInput(&userCommandInput);
-    ProcessCommandLine(userCommandInput, &commandStruct);
-    RunCommand(userCommandInput, commandStruct, &lastFGStatus);
-
-    free(userCommandInput);
-    Destructor(commandStruct);
+   while (true) {
+        GetCommandInput(&userCommandInput);
+        ProcessCommandLine(userCommandInput, &commandStruct);
+        if (commandStruct != NULL) {
+            RunCommand(userCommandInput, commandStruct, &lastChildStatus);
+            Destructor(commandStruct);
+        }
+        free(userCommandInput);
+        userCommandInput = NULL;
+   }
     return EXIT_SUCCESS;
 }

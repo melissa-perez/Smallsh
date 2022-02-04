@@ -34,13 +34,23 @@ void CDCommand(struct command* commandStruct) {
 
 void Destructor(struct command* commandStruct) {
     // free up anything that is initialized
-    if (commandStruct->cmd != NULL) free(commandStruct->cmd);
-    if (commandStruct->inputFile != NULL) free(commandStruct->inputFile);
-    if (commandStruct->outputFile != NULL) free(commandStruct->outputFile);
+    if (commandStruct->cmd != NULL) {
+        free(commandStruct->cmd);
+        commandStruct->cmd = NULL;
+    }
+    if (commandStruct->inputFile != NULL) {
+        free(commandStruct->inputFile);
+        commandStruct->inputFile = NULL;
+    }
+    if (commandStruct->outputFile != NULL) {
+        free(commandStruct->outputFile);
+        commandStruct->outputFile = NULL;
+    }
     
     int i = 0;
     while (i < commandStruct->argListSize) {
         free(commandStruct->argList[i]);
+        commandStruct->argList[i] = NULL;
         ++i;
     }
     free(commandStruct);
@@ -92,12 +102,13 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
         charsRead = 0;
     }
     free(pidString);
+    pidString = NULL;
     return;
 }
 
-/*void ExitCommand(void) {
+void ExitCommand(void) {
     // no pids -- program ends normally
-    if (backgroundProcessesCount == 0) exit(EXIT_SUCCESS);
+    /*if (backgroundProcessesCount == 0) exit(EXIT_SUCCESS);
     // go through array and clear out pids forcefully
     for (int i = 0; i < backgroundProcessesCount; ++i) {
         kill(backgroundProcessesPIDS[i], SIGTERM);
@@ -110,9 +121,9 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
         }
         backgroundProcessesPIDS[i] = 0;
     }
-    // killing running pids is abnormal
-    exit(EXIT_FAILURE);
-}*/
+    // killing running pids is abnormal*/
+    exit(EXIT_SUCCESS);
+}
 
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
@@ -126,6 +137,7 @@ void GetCommandInput(char** userInputAddr) {
     input[strcspn(input, "\n")] = '\0';
     strcpy(*userInputAddr, input);
     free(input);
+    input = NULL;
     return;
 }
 
@@ -219,8 +231,9 @@ void RunCommand(char* userCommandInput,
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
         // can't pass args to exit, killing smallsh, clear data 
         free(userCommandInput);
+        userCommandInput = NULL;
         Destructor(commandStruct);
-        //ExitCommand();
+        ExitCommand();
     }
     else if ((strcmp(commandStruct->cmd, "status") == 0)) {
         StatusCommand(*lastStatus);     
@@ -282,22 +295,21 @@ void ChildFork(struct command* commandStruct) {
     if (commandStruct->inputFile != NULL) {
         VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
         sourceResult = dup2(sourceFD, 0);
+        close(sourceFD);
         if (sourceResult < 0) {
             perror("source dup2()");
             exit(2);
         }
-        close(sourceFD);
-
     }
 
     if (commandStruct->outputFile != NULL) {
         VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
         outResult = dup2(targetFD, 1);
+        close(targetFD);
         if (outResult < 0) {
             perror("target dup2()");
             exit(2);
         }
-        close(targetFD);
     }
 
     // attempt to execute other command

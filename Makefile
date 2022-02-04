@@ -4,4 +4,4 @@ setup:
 clean:
 	rm -f smallsh
 debug:
-	valgrind -s --leak-check=yes --track-origins=yes --show-reachable=yes ./smallsh
+	valgrind -s --track-fds=yes --leak-check=yes --track-origins=yes --show-reachable=yes ./smallsh
