@@ -41,9 +41,9 @@ struct command {
 //struct sigaction SIGINIT_Action = { 0 };
 //struct sigaction SIGTSTP_Action = { 0 };
 
-
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
+void ChildFork(struct command*);
 void CDCommand(struct command*);
 void Destructor(struct command*);
 void ExitCommand(void);
@@ -56,4 +56,6 @@ void ProcessCommandLine(char*, struct command**);
 void RunCommand(char*, struct command*, int*);
 int StatusCommand(int);
 void OtherCommand(int*, struct command*);
+void VerifyInputRedirection(char*, int*);
+void VerifyOutputRedirection(char*, int*);
 #endif

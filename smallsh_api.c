@@ -211,7 +211,9 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
-void RunCommand(char* userCommandInput, struct command* commandStruct, int* lastStatus) {
+void RunCommand(char* userCommandInput,
+    struct command* commandStruct,
+    int* lastStatus) {
     // determine how to handle the first command given
     // cd, exit, status, or fork to exec
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
@@ -228,7 +230,6 @@ void RunCommand(char* userCommandInput, struct command* commandStruct, int* last
     }
     else {
         OtherCommand(lastStatus, commandStruct);
-    
     }
     return;
 }
@@ -242,40 +243,91 @@ int StatusCommand(int status) {
     return EXIT_SUCCESS;
 }
 
-void OtherCommand(int* resultStatus, struct command* commandStruct) {
-    int otherCommStatus;
-    //printf("Parent process's pid = %d\n", getpid());
+void OtherCommand(int* resultStatus,
+    struct command* commandStruct) {
+    // fork a process to run new program
+    pid_t childPid = fork();
+    int childStatus;
+
+    switch (childPid) {
+        case -1:
+            perror("fork() failed!");
+            break;
+        case 0:
+            // fork is sucessful, give child spawn command info
+            // to execute
+            ChildFork(commandStruct);
+            break;
+        default:
+            // wait for child process to finish
+            childPid = waitpid(childPid, &childStatus, 0);
+    }
+    *resultStatus = childStatus;
+    return;
+}
+
+void ChildFork(struct command* commandStruct) {
+    int sourceFD = 0, targetFD = 0, sourceResult = 0, outResult = 0;
+
+    // create array for command + arguments
     int newArgSize = commandStruct->argListSize + 2;
     char* newargv[newArgSize];
     newargv[newArgSize - 1] = NULL;
-    // Replace the current program with cmd
     newargv[0] = commandStruct->cmd;
     for (int i = 0; i < commandStruct->argListSize; ++i) {
         newargv[i + 1] = commandStruct->argList[i];
     }
-    pid_t otherCommChildPID = fork();
-    
-    // this is for foreground only
-    if (otherCommChildPID == -1) {
-        perror("fork() failed!");
+
+    // if files are involved
+    if (commandStruct->inputFile != NULL) {
+        VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
+        sourceResult = dup2(sourceFD, 0);
+        if (sourceResult < 0) {
+            perror("source dup2()");
+            exit(2);
+        }
+        close(sourceFD);
+
     }
-    else if (otherCommChildPID == 0) {
-        // Child process executes this branch
-        //printf("CHILD(%d) running %s command\n", getpid(), commandStruct->cmd);
-        execvp(commandStruct->cmd, newargv);
-        perror(commandStruct->cmd);
+
+    if (commandStruct->outputFile != NULL) {
+        VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
+        outResult = dup2(targetFD, 1);
+        if (outResult < 0) {
+            perror("target dup2()");
+            exit(2);
+        }
+        close(targetFD);
+    }
+
+    // attempt to execute other command
+    execvp(commandStruct->cmd, newargv);
+    // beyond this point, if command fails print error and set exit 1
+    // exit 1 used in status 
+    perror(commandStruct->cmd);
+    exit(1);
+
+    return;
+}
+
+void VerifyInputRedirection(char* infile,
+    int* fileDescriptor) {
+    int openFile = open(infile, O_RDONLY);
+    if (openFile < 0) {
+        perror("source file open() failed");
         exit(1);
     }
-    else {
-        // The parent process executes this branch
-        //printf("Child's pid = %d\n", otherCommChildPID);
-        // WNOHANG specified. If the child hasn't terminated, waitpid will immediately return with value 0
-        otherCommChildPID = waitpid(otherCommChildPID, &otherCommStatus, 0);
-        //printf("In the parent process waitpid returned value %d\n", otherCommChildPID);
-    }
-    *resultStatus = otherCommStatus;
-    //StatusCommand(*resultStatus);
+    *fileDescriptor = openFile;
+    return;
+}
 
-    //printf("The process with pid %d is returning from main\n", getpid());
+void VerifyOutputRedirection(char* outfile,
+    int* fileDescriptor) {
+    int openFile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    if (openFile < 0) {
+        perror("target file open() failed");
+        exit(1);
+    }
+    *fileDescriptor = openFile;
     return;
 }
