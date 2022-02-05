@@ -143,9 +143,8 @@ void GetCommandInput(char** userInputAddr) {
     printf("%s", PROMPT);
     fflush(stdout);
     // let the user input command
-    int charsRead = getline(&input, &inputLength, stdin);
+    /*int charsRead = getline(&input, &inputLength, stdin);
     if (charsRead == -1) {
-        printf("hellooooo\n\n");
         clearerr(stdin); // reset stdin status
     }  
     else {
@@ -153,7 +152,15 @@ void GetCommandInput(char** userInputAddr) {
         *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
         input[charsRead - 1] = '\0';
         strcpy(*userInputAddr, input);
+    }*/
+    if (getline(&input, &inputLength + 1, stdin) != -1) {
+        // do stuff with user_input
+        *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
+        input[strcspn(input, "\n") - 1] = '\0';
+        strcpy(*userInputAddr, input);
+        //printf("hellll\n");
     }
+    else clearerr(stdin);
     free(input);
     input = NULL;
     return;
@@ -399,5 +406,29 @@ void VerifyOutputRedirection(char* outfile,
         exit(1);
     }
     *fileDescriptor = openFile;
+    return;
+}
+
+void on(int sig) {
+    int savedErrNo = errno;
+    // set the flag on
+    flag = 1;
+    char* message = "\nEntering foreground-only mode (& is now ignored)\n:";
+    write(STDOUT_FILENO, message, 53);
+    // register for off next
+    signal(SIGTSTP, &off);
+    errno = savedErrNo;
+    return;
+}
+
+void off(int sig) {
+    int savedErrNo = errno;
+    // set the flag off
+    flag = 0;
+    char* message = "\nExiting foreground-only mode\n:";
+    write(STDOUT_FILENO, message, 33);
+    // register for on next
+    signal(SIGTSTP, &on);
+    errno = savedErrNo;
     return;
 }

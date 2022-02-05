@@ -79,41 +79,32 @@ int main() {
     return EXIT_SUCCESS;
 }
 */
-volatile sig_atomic_t flag = 0;
 
-void off(int);
-
-void on(int sig)
-{
-    flag = 1;
-    write(2, "on\n", 3);
-    signal(SIGTSTP, &off);
-}
-
-void off(int sig)
-{
-    flag = 0;
-    write(2, "off\n", 4);
-    signal(SIGTSTP, &on);
-}
 
 int main()
 {
     signal(SIGTSTP, &on);
-    int flag_save = flag;
-
+    char* userCommandInput = NULL;
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGTSTP);
-
-    for (int i = 0; i < 10; )
-    {
-        sigprocmask(SIG_BLOCK, &mask, NULL);
-        if (flag_save != flag)
-        {
-            i++;
-            flag_save = flag;
+    while (true) {
+        GetCommandInput(&userCommandInput);
+        //printf("yooo\n");
+        if (userCommandInput != NULL) {
+            free(userCommandInput);
+            userCommandInput = NULL;
         }
-        sigprocmask(SIG_UNBLOCK, &mask, NULL);
     }
+   // for (int i = 0; i < 10; )
+    //{
+        //sigprocmask(SIG_BLOCK, &mask, NULL);
+        //if (flag_save != flag)
+       // {
+         //   i++;
+         //   flag_save = flag;
+       // }
+       // sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    //}
+        return 0;
 }
