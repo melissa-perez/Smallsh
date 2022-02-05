@@ -1,6 +1,15 @@
 #include "smallsh_api.h"
 
 
+// number of children started but not yet waited on
+static volatile sig_atomic_t numLiveChildren = 0;
+
+void handle_SIGTSTP(int signo) {
+    char* message = "you hit ctrl-z, nice job\n";
+    write(STDOUT_FILENO, message, 25);
+    //fflush(stdout);
+}
+
 bool CheckForCommentLine(char* token) {
     // check to see if we ignore the entered input
     return (
@@ -130,16 +139,21 @@ void ExitCommand(void) {
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
     size_t inputLength = 2048;
-    // freed in main/exit
-    *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
-    printf("%s ", PROMPT);
+
+    printf("%s", PROMPT);
     fflush(stdout);
     // let the user input command
     int charsRead = getline(&input, &inputLength, stdin);
-    if (charsRead != -1) {
+    if (charsRead == -1) {
+        printf("hellooooo\n\n");
+        clearerr(stdin); // reset stdin status
+    }  
+    else {
+        // freed in main/exit
+        *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
         input[charsRead - 1] = '\0';
         strcpy(*userInputAddr, input);
-    }   
+    }
     free(input);
     input = NULL;
     return;
@@ -155,11 +169,6 @@ void GetPidString(char** pidStringAddr) {
     return;
 }
 
-void Handle_SIGTSTP(int sigNo) {
-    int savedErrNo = errno;
-    // code in between
-    errno = savedErrNo;
-}
 
 void Handle_SIGINT(int sigNo) {
     int savedErrNo = errno;
@@ -176,6 +185,7 @@ void Handle_SIGCHLD(int sigNo) {
     // code in between
     errno = savedErrNo;
 }
+
 
 void ProcessCommandLine(char* userCommandLine,
     struct command** userStructAddr) {
@@ -246,7 +256,7 @@ void ProcessCommandLine(char* userCommandLine,
     return;
 }
 
-void RunCommand(char* userCommandInput,
+/*void RunCommand(char* userCommandInput,
     struct command* commandStruct,
     int* lastStatus) {
     // determine how to handle the first command given
@@ -268,7 +278,7 @@ void RunCommand(char* userCommandInput,
         OtherCommand(lastStatus, commandStruct);
     }
     return;
-}
+}*/
 
 int StatusCommand(int status) {
     // check if termination by signal or exit status
@@ -279,17 +289,13 @@ int StatusCommand(int status) {
     return EXIT_SUCCESS;
 }
 
-void OtherCommand(int* resultStatus,
+/*void OtherCommand(int* resultStatus,
     struct command* commandStruct) {
-    struct sigaction SIGINT_Action = { {0} };
-    // fork a process to run new program
-    SIGINT_Action.sa_handler = SIG_IGN;
-    SIGINT_Action.sa_flags = SA_RESTART;
-    sigfillset(&SIGINT_Action.sa_mask);
-    sigaction(SIGINT, &SIGINT_Action, NULL);
+    // register SIGINT on parent and bg children to ignore(inherit).
+    signal(SIGINT, SIG_IGN);
+
 
     pid_t childPid = fork();
-
     int childStatus;
 
     switch (childPid) {
@@ -299,32 +305,40 @@ void OtherCommand(int* resultStatus,
         case 0:
             // fork is sucessful, give child spawn command info
             // to execute
-            SIGINT_Action.sa_handler = Handle_SIGINT;
-            sigfillset(&SIGINT_Action.sa_mask);
-            sigaction(SIGINT, &SIGINT_Action, NULL);
+            signal(SIGINT, SIG_DFL);
             ChildFork(commandStruct);
             break;
         default:
+            // register SIGTSTP on children to ignore.
+            signal(SIGTSTP, SIG_IGN);
+
             if (commandStruct->isBackgroundProc) {
-                printf("background pid is %d", childPid);
-                fflush(stdout);
-                //childPid = waitpid()
+                ;;;;;;
+                // if the flag is on, then the background proc must
+                // be ran as a foreground program
+                if (stp_flag == 1) {
+                    signal(SIGINT, SIG_DFL);
+                    childPid = waitpid(childPid, &childStatus, 0);*/
+               // }
+                /*else {
+                    waitpid(-1, &childStatus, WNOHANG);
+                    printf("background pid is %d", childPid);
+                    fflush(stdout);
+                }
             }
             else {
-                // wait for child process to finish
-                SIGINT_Action.sa_handler = SIG_IGN;
-                SIGINT_Action.sa_flags = SA_RESTART;
-                sigaction(SIGINT, &SIGINT_Action, NULL);
+                // register SIGINT to not ignore in fg child
+                signal(SIGINT, SIG_DFL);
                 childPid = waitpid(childPid, &childStatus, 0);
             }
     }
     *resultStatus = childStatus;
     if (WIFSIGNALED(*resultStatus)) {
         StatusCommand(*resultStatus);
-        //clearerr(stdin);
+        clearerr(stdin);
     }
     return;
-}
+}*/
 
 void ChildFork(struct command* commandStruct) {
     int sourceFD = 0, targetFD = 0, sourceResult = 0, outResult = 0;
