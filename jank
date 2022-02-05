@@ -1,0 +1,15 @@
+total 696
+drwx------. 3 peremeli upg16916   315 Feb  4 22:10 .
+drwxrwx---. 7 peremeli upg16916   134 Jan 26 23:17 ..
+drwxrwx---. 8 peremeli upg16916   325 Feb  4 01:24 .git
+-rw-rw----. 1 peremeli upg16916  6002 Jan 26 23:29 .gitignore
+-rwxrwx---. 1 peremeli upg16916     0 Feb  4 22:10 jank
+-rwxrwx---. 1 peremeli upg16916    90 Feb  4 00:23 junk
+-rwxrwx---. 1 peremeli upg16916     9 Feb  4 00:23 junk2
+-rwx------. 1 peremeli upg16916   215 Feb  4 00:14 Makefile
+-rwx--x---. 1 peremeli upg16916  2251 Jan 26 23:55 p3testscript
+-rwx------. 1 peremeli upg16916   485 Jan 26 23:19 README.txt
+-rwxrwx---. 1 peremeli upg16916 26856 Feb  4 22:10 smallsh
+-rwx------. 1 peremeli upg16916 13332 Feb  4 22:10 smallsh_api.c
+-rwxrwx---. 1 peremeli upg16916  1437 Feb  4 19:39 smallsh_api.h
+-rwx------. 1 peremeli upg16916  1368 Feb  4 22:10 smallsh.c

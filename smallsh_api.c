@@ -1,10 +1,12 @@
 #include "smallsh_api.h"
 
+
 bool CheckForCommentLine(char* token) {
-    // check if token is empty, comment line, or null
+    // check to see if we ignore the entered input
     return (
             (token == NULL) ||
             ((token != NULL) && (token[0] == '\0')) ||  
+            ((token != NULL) && (token[0] == '\n')) ||
             ((token != NULL) && (token[0] == '#')) ||
             (strcmp(token, "#") == 0)
         );
@@ -23,8 +25,7 @@ int CheckForVariableExpression(char* token) {
 void CDCommand(struct command* commandStruct) {
     // attempt to change directory
     int chdirResult = (commandStruct->argListSize == 0) ? chdir(getenv(HOME)) :
-        chdir(commandStruct->argList[0]);
-    
+        chdir(commandStruct->argList[0]);   
     if (chdirResult == -1) {
         // errno set to 2 on failure
         int errsv = errno;
@@ -79,9 +80,9 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
             // token pointer
             while (charsRead < strcspn(token, VAR_EXPR)) {
                 (*expTokenAddr)[expTokenIndex] = token[charsRead];
-                expTokenIndex++;
-                tokenIndex++;
-                charsRead++;
+                ++expTokenIndex;
+                ++tokenIndex;
+                ++charsRead;
             }
             // if this if proced, then there is an expression
             // add the pid in its place
@@ -95,9 +96,9 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
             // no more occrs in the string, copy anything that remains
             while (tokenIndex < oldLength) {
                 (*expTokenAddr)[expTokenIndex] = token[charsRead];
-                expTokenIndex++;
-                tokenIndex++;
-                charsRead++;
+                ++expTokenIndex;
+                ++tokenIndex;
+                ++charsRead;
             }
         }
         charsRead = 0;
@@ -133,10 +134,12 @@ void GetCommandInput(char** userInputAddr) {
     *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
     printf("%s ", PROMPT);
     fflush(stdout);
-    // get user input, does not work for empty in MSVS
-    getline(&input, &inputLength, stdin);
-    input[strcspn(input, "\n")] = '\0';
-    strcpy(*userInputAddr, input);
+    // let the user input command
+    int charsRead = getline(&input, &inputLength, stdin);
+    if (charsRead != -1) {
+        input[charsRead - 1] = '\0';
+        strcpy(*userInputAddr, input);
+    }   
     free(input);
     input = NULL;
     return;
@@ -152,8 +155,26 @@ void GetPidString(char** pidStringAddr) {
     return;
 }
 
-void Handle_SIGTSTP(int a) {
-    //char* 
+void Handle_SIGTSTP(int sigNo) {
+    int savedErrNo = errno;
+    // code in between
+    errno = savedErrNo;
+}
+
+void Handle_SIGINT(int sigNo) {
+    int savedErrNo = errno;
+    // code in between
+    char* message = "Caught SIGINT: terminated by signal 2\n";
+    write(STDOUT_FILENO, message, 28);
+    kill(getpid(), SIGTERM);
+    sleep(1);
+    errno = savedErrNo;
+}
+
+void Handle_SIGCHLD(int sigNo) {
+    int savedErrNo = errno;
+    // code in between
+    errno = savedErrNo;
 }
 
 void ProcessCommandLine(char* userCommandLine,
@@ -169,19 +190,20 @@ void ProcessCommandLine(char* userCommandLine,
     char* expToken = NULL;
     // check to ignore comment/blank lines
     if (CheckForCommentLine(lineToken)) return;
+    
     // freed in main, as well as all parts that are dynamic
     *userStructAddr = calloc(1, sizeof(struct command));
     (*userStructAddr)->argListSize = 0;
 
     while (lineToken != NULL) {
-        printf("Before expansion(if needed): %s\n", lineToken);
+        //printf("Before expansion(if needed): %s\n", lineToken);
         expansionCount = CheckForVariableExpression(lineToken);
         if (expansionCount > 0) {
             ExpandVariableExpression(expansionCount, lineToken, &expToken);
             lineToken = expToken;
-            printf("After expansion(if needed): %s\n", lineToken);
+            //printf("After expansion(if needed): %s\n", lineToken);
         }
-        fflush(stdout);
+        //fflush(stdout);
         if (firstCommand) {
             // at this point we should have a command
             (*userStructAddr)->cmd = calloc(strlen(lineToken) + 1,
@@ -259,8 +281,15 @@ int StatusCommand(int status) {
 
 void OtherCommand(int* resultStatus,
     struct command* commandStruct) {
+    struct sigaction SIGINT_Action = { {0} };
     // fork a process to run new program
+    SIGINT_Action.sa_handler = SIG_IGN;
+    SIGINT_Action.sa_flags = SA_RESTART;
+    sigfillset(&SIGINT_Action.sa_mask);
+    sigaction(SIGINT, &SIGINT_Action, NULL);
+
     pid_t childPid = fork();
+
     int childStatus;
 
     switch (childPid) {
@@ -270,26 +299,35 @@ void OtherCommand(int* resultStatus,
         case 0:
             // fork is sucessful, give child spawn command info
             // to execute
+            SIGINT_Action.sa_handler = Handle_SIGINT;
+            sigfillset(&SIGINT_Action.sa_mask);
+            sigaction(SIGINT, &SIGINT_Action, NULL);
             ChildFork(commandStruct);
             break;
         default:
             if (commandStruct->isBackgroundProc) {
-                printf("background pid is %ld", childPid);
+                printf("background pid is %d", childPid);
                 fflush(stdout);
-                ;;;;
+                //childPid = waitpid()
             }
             else {
                 // wait for child process to finish
+                SIGINT_Action.sa_handler = SIG_IGN;
+                SIGINT_Action.sa_flags = SA_RESTART;
+                sigaction(SIGINT, &SIGINT_Action, NULL);
                 childPid = waitpid(childPid, &childStatus, 0);
             }
     }
     *resultStatus = childStatus;
+    if (WIFSIGNALED(*resultStatus)) {
+        StatusCommand(*resultStatus);
+        //clearerr(stdin);
+    }
     return;
 }
 
 void ChildFork(struct command* commandStruct) {
     int sourceFD = 0, targetFD = 0, sourceResult = 0, outResult = 0;
-
     // create array for command + arguments
     int newArgSize = commandStruct->argListSize + 2;
     char* newargv[newArgSize];
@@ -341,7 +379,7 @@ void VerifyInputRedirection(char* infile,
 
 void VerifyOutputRedirection(char* outfile,
     int* fileDescriptor) {
-    int openFile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    int openFile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (openFile < 0) {
         perror("target file open() failed");
         exit(1);

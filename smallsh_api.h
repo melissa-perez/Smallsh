@@ -26,7 +26,7 @@
  
 //static int backgroundProcessesPIDS[MAX_PROC];
 //static int backgroundProcessesCount;
-//volatile sig_atomic_t flag;
+static volatile sig_atomic_t flag;
 
 
 struct command {
@@ -38,8 +38,7 @@ struct command {
 	bool	isBackgroundProc;	
 };
 
-//struct sigaction SIGINIT_Action = { 0 };
-//struct sigaction SIGTSTP_Action = { 0 };
+
 
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
@@ -50,8 +49,9 @@ void ExitCommand(void);
 void ExpandVariableExpression(int, char*, char**);
 void GetCommandInput(char**);
 void GetPidString(char**);
-//void Handle_SIGINT(int);
-//void Handle_SIGTSTP(int);
+void Handle_SIGINT(int);
+void Handle_SIGTSTP(int);
+void Handle_SIGCHLD(int);
 void ProcessCommandLine(char*, struct command**);
 void RunCommand(char*, struct command*, int*);
 int StatusCommand(int);

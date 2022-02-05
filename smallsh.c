@@ -3,7 +3,7 @@
     Author: Melissa Perez
     OSU ID: 934-326-989
     OSU email address: peremeli@oregonstate.edu
-    Last modified: 01/27/2022
+    Last modified: 02/05/2022
 
     Description:
 
@@ -26,6 +26,11 @@ int main() {
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
     int lastChildStatus = EXIT_SUCCESS;
+    //s//truct sigaction SIGTSTP_Action = { {0} };
+    //struct sigaction SIGCHLD_Action = { {0} };
+    //struct sigaction ignore_action = { {0} };
+
+
     //backgroundProcessesCount = 0;
 
    while (true) {
@@ -34,7 +39,8 @@ int main() {
         if (commandStruct != NULL) {
             RunCommand(userCommandInput, commandStruct, &lastChildStatus);
             Destructor(commandStruct);
-        }
+            commandStruct = NULL;
+        }       
         free(userCommandInput);
         userCommandInput = NULL;
    }
