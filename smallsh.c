@@ -35,25 +35,36 @@ int main()
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
     int lastChildStatus = EXIT_SUCCESS;
+    // initialize static variables
     numBackgroundTotal = 0;
     numBackgroundCurrent = 0;
     memset(processList, 0, MAX_PROCESSES);
     memset(processExited, false, MAX_PROCESSES);
+    // assign signal handlers
     signal(SIGTSTP, &SIGTSTP_On);
     signal(SIGINT, SIG_IGN);
 
+    // infinite loop, terminates on exit command
     while (true) {
+        // get user input
         GetCommandInput(&userCommandInput);
+        // valid input was received
         if (userCommandInput != NULL) {
+            // process the input and free the allocation of getline
             ProcessCommandLine(userCommandInput, &commandStruct);
             free(userCommandInput);
             userCommandInput = NULL;
         }
+        // valid command was received and struct constructed
         if (commandStruct != NULL) {
+            // run command, destroy the dynamic allocation and reset to NULL 
+            // for next iteration
             RunCommand(userCommandInput, commandStruct, &lastChildStatus);
             Destructor(commandStruct);
             commandStruct = NULL;
         }
     }
-        return EXIT_SUCCESS;
+    // never reaches this point, could change while true loop to a boolean and return bool
+    // from exit command instead of terminating there
+    return EXIT_SUCCESS;
 }

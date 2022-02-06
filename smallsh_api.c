@@ -21,16 +21,16 @@ void ChildFork(struct command* commandStruct) {
                 perror("source dup2()");
                 exit(2);
             }
-            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+            close(sourceFD);
         }
         if (commandStruct->outputFile == NULL) {
             VerifyOutputRedirection(DEV_NULL, &targetFD);
-            sourceResult = dup2(targetFD, 0);
-            if (sourceResult < 0) {
+            sourceResult = dup2(targetFD, 1);
+            if (outResult < 0) {
                 perror("target dup2()");
                 exit(2);
             }
-            fcntl(targetFD, F_SETFD, FD_CLOEXEC);
+            close(targetFD);
         }
     } 
 
@@ -43,7 +43,7 @@ void ChildFork(struct command* commandStruct) {
             perror("source dup2()");
             exit(2);
         }
-        fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+        close(sourceFD);
     }
     if (commandStruct->outputFile != NULL) {
         VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
@@ -52,7 +52,7 @@ void ChildFork(struct command* commandStruct) {
             perror("target dup2()");
             exit(2);
         }
-        fcntl(targetFD, F_SETFD, FD_CLOEXEC);
+        close(targetFD);
     }
 
     // attempt to execute other command
