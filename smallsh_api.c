@@ -132,7 +132,7 @@ void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
     int charsRead;
     size_t inputLength = 2048;
-    printf("%s", PROMPT);
+    printf("%s ", PROMPT);
     fflush(stdout);
     // let the user input command
     if ((charsRead = getline(&input, &inputLength, stdin)) != -1) {
@@ -390,7 +390,8 @@ void VerifyInputRedirection(char* infile,
     int* fileDescriptor) {
     int openFile = open(infile, O_RDONLY);
     if (openFile < 0) {
-        perror("source file open() failed");
+        printf("cannot open %s for input\n", infile);
+        fflush(stdout);
         exit(1);
     }
     *fileDescriptor = openFile;
@@ -401,7 +402,8 @@ void VerifyOutputRedirection(char* outfile,
     int* fileDescriptor) {
     int openFile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (openFile < 0) {
-        perror("target file open() failed");
+        printf("cannot open %s for output\n", outfile);
+        fflush(stdout);
         exit(1);
     }
     *fileDescriptor = openFile;
@@ -412,8 +414,8 @@ void SIGTSTP_On(int sig) {
     int savedErrNo = errno;
     // set the flag on
     flag = 1;
-    char* message = "\nEntering foreground-only mode (& is now ignored)\n:";
-    write(STDOUT_FILENO, message, 53);
+    char* message = "Entering foreground-only mode (& is now ignored)\n:";
+    write(STDOUT_FILENO, message, 51);
     // register for off next
     signal(SIGTSTP, &SIGTSTP_Off);
     errno = savedErrNo;
@@ -424,8 +426,8 @@ void SIGTSTP_Off(int sig) {
     int savedErrNo = errno;
     // set the flag off
     flag = 0;
-    char* message = "\nExiting foreground-only mode\n:";
-    write(STDOUT_FILENO, message, 33);
+    char* message = "Exiting foreground-only mode\n:";
+    write(STDOUT_FILENO, message, 31);
     // register for on next
     signal(SIGTSTP, &SIGTSTP_On);
     errno = savedErrNo;
