@@ -188,6 +188,8 @@ void ExpandVariableExpression(int expCount, char* token, char** expTokenAddr) {
     return;
 }
 
+// Pseudocode credit to Ed Heal and Emile Cormier on StackOverflow
+// https://stackoverflow.com/questions/14110738/how-to-terminate-a-child-process-which-is-running-another-program-by-doing-exec
 void ExitCommand(void) {
     // no pids -- program ends normally
     if (numBackgroundCurrent == 0) exit(EXIT_SUCCESS);
@@ -195,9 +197,12 @@ void ExitCommand(void) {
     // go through array and clear out pids forcefully
     for (int i = 0; i < numBackgroundTotal; ++i) {
         if (!WIFEXITED(waitpid(processList[i], &currChildStatus, WNOHANG))) {
+            // attempt to kill pid normally
             kill(processList[i], SIGTERM);
-            sleep(5);
+            // reduced time in order to terminate quicker
+            sleep(1);
             waitpid(processList[i], &currChildStatus, WNOHANG);
+            // if it did not work, force kill
             if (currChildStatus == 0) {
                 kill(processList[i], SIGKILL);
                 waitpid(processList[i], &currChildStatus, 0);
@@ -205,8 +210,8 @@ void ExitCommand(void) {
             processList[i] = 0;
         }
     }
-    // killing running pids is abnormal*/
-    exit(EXIT_SUCCESS);
+    // killing running pids is abnormal
+    exit(EXIT_FAILURE);
 }
 
 void GetCommandInput(char** userInputAddr) {
@@ -215,7 +220,7 @@ void GetCommandInput(char** userInputAddr) {
     size_t inputLength = 2048;
     printf("%s ", PROMPT);
     fflush(stdout);
-    // let the user input command
+    // fix getline in case of SIGTSTP
     if ((charsRead = getline(&input, &inputLength, stdin)) != -1) {
         // valid input
         *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
@@ -251,6 +256,7 @@ void ProcessCommandLine(char* userCommandLine,
     char* expToken = NULL;
     // check to ignore comment/blank lines
     if (CheckForCommentLine(lineToken)) {
+        // check to see if any children are finished
         CheckChildrenStatus();
         return;
     }
@@ -318,7 +324,6 @@ void RunCommand(char* userCommandInput,
     if ((strcmp(commandStruct->cmd, "exit") == 0)) {
         // can't pass args to exit, killing smallsh, clear data 
         free(userCommandInput);
-        userCommandInput = NULL;
         Destructor(commandStruct);
         ExitCommand();
     }
@@ -334,6 +339,32 @@ void RunCommand(char* userCommandInput,
     return;
 }
 
+// Credit to Prof. Gambord on forums for providing signal handling help
+// Both SIGTSTP_On and SIGTSTP_Off
+void SIGTSTP_On(int sig) {
+    int savedErrNo = errno;
+    // set the flag on
+    flag = 1;
+    char* message = "\nEntering foreground-only mode (& is now ignored)\n: ";
+    write(STDOUT_FILENO, message, 53);
+    // register for off next
+    signal(SIGTSTP, &SIGTSTP_Off);
+    errno = savedErrNo;
+    return;
+}
+
+void SIGTSTP_Off(int sig) {
+    int savedErrNo = errno;
+    // set the flag off
+    flag = 0;
+    char* message = "\nExiting foreground-only mode\n: ";
+    write(STDOUT_FILENO, message, 33);
+    // register for on next
+    signal(SIGTSTP, &SIGTSTP_On);
+    errno = savedErrNo;
+    return;
+}
+
 int StatusCommand(int status) {
     // check if termination by signal or exit status
     if (WIFEXITED(status)) printf("exit value %d\n", WEXITSTATUS(status));
@@ -345,6 +376,7 @@ int StatusCommand(int status) {
 
 void OtherCommand(int* resultStatus,
     struct command* commandStruct) {
+    // begin fork process
     pid_t childPid = fork();
     int childStatus = 0;
 
@@ -372,7 +404,7 @@ void OtherCommand(int* resultStatus,
                 else {
                     // return without waiting on the process to end
                     processList[numBackgroundTotal] = childPid;
-                    waitpid(childPid, &childStatus, WNOHANG);
+                    //waitpid(childPid, &childStatus, WNOHANG);
                     // this count is needed for my process list 
                     ++numBackgroundTotal;
                     // this is current count for exit termination
@@ -385,62 +417,39 @@ void OtherCommand(int* resultStatus,
                 childPid = waitpid(childPid, &childStatus, 0);
             }
     }
+    // store last foreground process result for status command
     *resultStatus = childStatus;
-    if (WIFSIGNALED(*resultStatus)) {
-        StatusCommand(*resultStatus);
-    }
+    // if signal terminated, print the killing signal
+    if (WIFSIGNALED(*resultStatus)) StatusCommand(*resultStatus);
     // point before returning to command line
     CheckChildrenStatus();
     return;
 }
 
-
-
 void VerifyInputRedirection(char* infile,
     int* fileDescriptor) {
+    // attempt to open file location for reading
     int openFile = open(infile, O_RDONLY);
     if (openFile < 0) {
         printf("cannot open %s for input\n", infile);
         fflush(stdout);
         exit(1);
     }
+    // save fd for fork use 
     *fileDescriptor = openFile;
     return;
 }
 
 void VerifyOutputRedirection(char* outfile,
     int* fileDescriptor) {
+    // attempt to open file location for writing
     int openFile = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (openFile < 0) {
         printf("cannot open %s for output\n", outfile);
         fflush(stdout);
         exit(1);
     }
+    // save fd for fork use 
     *fileDescriptor = openFile;
     return;
 }
-
-void SIGTSTP_On(int sig) {
-    int savedErrNo = errno;
-    // set the flag on
-    flag = 1;
-    char* message = "Entering foreground-only mode (& is now ignored)\n:";
-    write(STDOUT_FILENO, message, 51);
-    // register for off next
-    signal(SIGTSTP, &SIGTSTP_Off);
-    errno = savedErrNo;
-    return;
-}
-
-void SIGTSTP_Off(int sig) {
-    int savedErrNo = errno;
-    // set the flag off
-    flag = 0;
-    char* message = "Exiting foreground-only mode\n:";
-    write(STDOUT_FILENO, message, 31);
-    // register for on next
-    signal(SIGTSTP, &SIGTSTP_On);
-    errno = savedErrNo;
-    return;
-}
-
