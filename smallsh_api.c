@@ -1,5 +1,86 @@
 #include "smallsh_api.h"
 
+void ChildFork(struct command* commandStruct) {
+    int sourceFD = 0, targetFD = 0, sourceResult = 0, outResult = 0;
+    // create array for command + arguments
+    int newArgSize = commandStruct->argListSize + 2;
+    char* newargv[newArgSize];
+    newargv[newArgSize - 1] = NULL;
+    newargv[0] = commandStruct->cmd;
+    for (int i = 0; i < commandStruct->argListSize; ++i) {
+        newargv[i + 1] = commandStruct->argList[i];
+    }
+    // if files are involved
+    // case: command is a bg process and SIGTSTP is off
+    if (flag == 0 && commandStruct->isBackgroundProc) {
+        // must redirect input/output to /dev/null
+        if (commandStruct->inputFile == NULL) {
+            VerifyInputRedirection(DEV_NULL, &sourceFD);
+            sourceResult = dup2(sourceFD, 0);
+            if (sourceResult < 0) {
+                perror("source dup2()");
+                exit(2);
+            }
+            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+        }
+        if (commandStruct->outputFile == NULL) {
+            VerifyOutputRedirection(DEV_NULL, &targetFD);
+            sourceResult = dup2(targetFD, 0);
+            if (sourceResult < 0) {
+                perror("target dup2()");
+                exit(2);
+            }
+            fcntl(targetFD, F_SETFD, FD_CLOEXEC);
+        }
+    } 
+
+    // case: command is a fg process and SIGTSTP is on
+    // SIGTSTP forces command to run in fg
+    if (commandStruct->inputFile != NULL) {
+        VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
+        sourceResult = dup2(sourceFD, 0);
+        if (sourceResult < 0) {
+            perror("source dup2()");
+            exit(2);
+        }
+        fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+    }
+    if (commandStruct->outputFile != NULL) {
+        VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
+        outResult = dup2(targetFD, 1);
+        if (outResult < 0) {
+            perror("target dup2()");
+            exit(2);
+        }
+        fcntl(targetFD, F_SETFD, FD_CLOEXEC);
+    }
+
+    // attempt to execute other command
+    execvp(commandStruct->cmd, newargv);
+    // beyond this point, if command fails print error and set exit 1
+    // exit 1 used in status 
+    perror(commandStruct->cmd);
+    exit(1);
+    return;
+}
+
+void CheckChildrenStatus(void) {
+    int childStatus;
+    // check background processes before returning to command line
+    for (int i = 0; i < numBackgroundTotal; ++i) {
+        if (waitpid(processList[i], &childStatus, WNOHANG) > 0) {
+            if (!processExited[i]) {
+                processExited[i] = true;
+                printf("background pid %d is done: ", processList[i]);
+                fflush(stdout);
+                StatusCommand(childStatus);
+                --numBackgroundCurrent;
+            }
+        }
+    }
+    return;
+}
+
 bool CheckForCommentLine(char* token) {
     // check to see if we ignore the entered input
     return (
@@ -313,78 +394,7 @@ void OtherCommand(int* resultStatus,
     return;
 }
 
-void ChildFork(struct command* commandStruct) {
-    int sourceFD = 0, targetFD = 0, sourceResult = 0, outResult = 0;
-    // create array for command + arguments
-    int newArgSize = commandStruct->argListSize + 2;
-    char* newargv[newArgSize];
-    newargv[newArgSize - 1] = NULL;
-    newargv[0] = commandStruct->cmd;
-    for (int i = 0; i < commandStruct->argListSize; ++i) {
-        newargv[i + 1] = commandStruct->argList[i];
-    }
-    // if files are involved
 
-    // case 1: input bg process and SIGTSTP is off
-    if (flag == 0 && commandStruct->isBackgroundProc) {
-        // must redirect to /dev/null
-        if (commandStruct->inputFile == NULL) {
-            VerifyInputRedirection(DEV_NULL, &sourceFD);
-            sourceResult = dup2(sourceFD, 0);
-            if (sourceResult < 0) {
-                perror("source dup2()");
-                exit(2);
-            }
-            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
-        }
-    }
-
-    // case 2: output bg process and SIGTSTP is off
-    if (flag == 0 && commandStruct->isBackgroundProc) {
-        // must redirect to /dev/null
-        if (commandStruct->outputFile == NULL) {
-            VerifyInputRedirection(DEV_NULL, &sourceFD);
-            sourceResult = dup2(sourceFD, 0);
-            if (sourceResult < 0) {
-                perror("source dup2()");
-                exit(2);
-            }
-            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
-        }
-    }
-
-    // case 3: input fg process and there's an input file, TSTP on
-    // defaults to fg
-    if (commandStruct->inputFile != NULL) {
-        VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
-        sourceResult = dup2(sourceFD, 0);
-        if (sourceResult < 0) {
-            perror("source dup2()");
-            exit(2);
-        }
-        fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
-    }
-
-    // case 4: output fg process and there's an output file, TSTP on
-    // defaults to fg
-    if (commandStruct->outputFile != NULL) {
-        VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
-        outResult = dup2(targetFD, 1);
-        if (outResult < 0) {
-            perror("target dup2()");
-            exit(2);
-        }
-        fcntl(targetFD, F_SETFD, FD_CLOEXEC);
-    }
-
-    // attempt to execute other command
-    execvp(commandStruct->cmd, newargv);
-    // beyond this point, if command fails print error and set exit 1
-    // exit 1 used in status 
-    perror(commandStruct->cmd);
-    exit(1);
-    return;
-}
 
 void VerifyInputRedirection(char* infile,
     int* fileDescriptor) {
@@ -434,19 +444,3 @@ void SIGTSTP_Off(int sig) {
     return;
 }
 
-void CheckChildrenStatus(void) {
-    int childStatus;
-    // check background processes returning to command line
-    for (int i = 0; i < numBackgroundTotal; ++i) {
-        if (waitpid(processList[i], &childStatus, WNOHANG) > 0) {
-            if (!processExited[i]) {
-                processExited[i] = true;
-                printf("background pid %d is done: ", processList[i]);
-                fflush(stdout);
-                StatusCommand(childStatus);
-                --numBackgroundCurrent;
-            }
-        }
-    }
-    return;
-}

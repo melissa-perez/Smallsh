@@ -31,6 +31,7 @@
 */
 int main()
 {
+    // create the program variables needed
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
     int lastChildStatus = EXIT_SUCCESS;
