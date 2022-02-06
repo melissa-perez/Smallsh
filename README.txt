@@ -13,8 +13,8 @@ gcc -std=gnu99 -g -Wall -o smallsh smallsh.c smallsh_api.c smallsh_api.h
 To run program:
 ./smallsh 
 
-To debug, you can use the below command or make debug:
-valgrind -s --leak-check=yes --track-origins=yes --show-reachable=yes ./smallsh
+Debug is available, but signals do not work with Valgrind.
+make debug
 
 To clean the directory for peremeli_program3:
 make clean
