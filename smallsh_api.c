@@ -25,7 +25,7 @@ void ChildFork(struct command* commandStruct) {
         }
         if (commandStruct->outputFile == NULL) {
             VerifyOutputRedirection(DEV_NULL, &targetFD);
-            sourceResult = dup2(targetFD, 1);
+            outResult = dup2(targetFD, 1);
             if (outResult < 0) {
                 perror("target dup2()");
                 exit(2);
