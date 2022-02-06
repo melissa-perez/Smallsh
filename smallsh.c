@@ -11,34 +11,6 @@
 
 #include "smallsh_api.h"
 
-// on and off flag for SIGTSP
-/*static volatile sig_atomic_t stp_flag = 0;
-
-void on(int sig) {
-    int savedErrNo = errno;
-    // set the flag on
-    flag = 1;
-    char* message = "\nEntering foreground-only mode (& is now ignored)\n";
-    write(STDOUT_FILENO, message, 52);
-    // register for off next
-    signal(SIGTSTP, &off);
-    errno = savedErrNo;
-    return;
-}
-
-void off(int sig) {
-    int savedErrNo = errno;
-    // set the flag off
-    flag = 0;
-    char* message = "\nExiting foreground-only mode\n";
-    write(STDOUT_FILENO, message, 32);
-    // register for on next
-    signal(SIGTSTP, &on);
-    errno = savedErrNo;
-    return;
-}
-
-*/
 
 /**
     Main entry point of the smallsh program.
@@ -49,62 +21,29 @@ void off(int sig) {
     @param const char*, argv
     @return int
 */
-/*
-int main() {
+int main()
+{
     char* userCommandInput = NULL;
     struct command* commandStruct = NULL;
     int lastChildStatus = EXIT_SUCCESS;
-    //struct sigaction SIGCHLD_Action = { {0} };
-    //backgroundProcessesCount = 0;
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGTSTP);
-    while (true) {
-        sigprocmask(SIG_BLOCK, &mask, NULL);
-        sleep(1);
-        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    numBackgroundTotal = 0;
+    numBackgroundCurrent = 0;
+    memset(processList, 0, MAX_PROCESSES);
+    memset(processExited, false, MAX_PROCESSES);
+    signal(SIGTSTP, &SIGTSTP_On);
 
-        //GetCommandInput(&userCommandInput);
+    while (true) {
+        GetCommandInput(&userCommandInput);
         if (userCommandInput != NULL) {
             ProcessCommandLine(userCommandInput, &commandStruct);
+            free(userCommandInput);
+            userCommandInput = NULL;
         }
         if (commandStruct != NULL) {
             RunCommand(userCommandInput, commandStruct, &lastChildStatus);
             Destructor(commandStruct);
             commandStruct = NULL;
-        }       
-        //free(userCommandInput);
-        //userCommandInput = NULL;
-    }
-    return EXIT_SUCCESS;
-}
-*/
-
-
-int main()
-{
-    signal(SIGTSTP, &on);
-    char* userCommandInput = NULL;
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGTSTP);
-    while (true) {
-        GetCommandInput(&userCommandInput);
-        //printf("yooo\n");
-        if (userCommandInput != NULL) {
-            free(userCommandInput);
-            userCommandInput = NULL;
         }
     }
-   // for (int i = 0; i < 10; )
-    //{
-        //sigprocmask(SIG_BLOCK, &mask, NULL);
-        //if (flag_save != flag)
-       // {
-         //   i++;
-         //   flag_save = flag;
-       // }
-       // sigprocmask(SIG_UNBLOCK, &mask, NULL);
-    //}
-        return 0;
+        return EXIT_SUCCESS;
 }

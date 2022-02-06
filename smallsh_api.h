@@ -23,11 +23,13 @@
 #define VAR_EXPR "$$"
 #define HOME "HOME"
 #define MAX_PROC 25
+#define MAX_PROCESSES 200
  
-//static int backgroundProcessesPIDS[MAX_PROC];
-//static int backgroundProcessesCount;
 static volatile sig_atomic_t flag;
-
+static int numBackgroundTotal;
+static int numBackgroundCurrent;
+static int processList[MAX_PROCESSES];
+static bool processExited[MAX_PROCESSES];
 
 struct command {
 	char*	cmd;
@@ -38,8 +40,6 @@ struct command {
 	bool	isBackgroundProc;	
 };
 
-
-
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
 void ChildFork(struct command*);
@@ -49,14 +49,12 @@ void ExitCommand(void);
 void ExpandVariableExpression(int, char*, char**);
 void GetCommandInput(char**);
 void GetPidString(char**);
-//void SIGCHLD_Handler(int);
-void off(int);
-void on(int);
+void SIGTSTP_Off(int);
+void SIGTSTP_On(int);
 void ProcessCommandLine(char*, struct command**);
-//void RunCommand(char*, struct command*, int*);
+void RunCommand(char*, struct command*, int*);
 int StatusCommand(int);
-//void OtherCommand(int*, struct command*);
+void OtherCommand(int*, struct command*);
 void VerifyInputRedirection(char*, int*);
 void VerifyOutputRedirection(char*, int*);
-void handle_SIGTSTP(int);
 #endif
