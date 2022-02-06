@@ -31,6 +31,7 @@ int main()
     memset(processList, 0, MAX_PROCESSES);
     memset(processExited, false, MAX_PROCESSES);
     signal(SIGTSTP, &SIGTSTP_On);
+    signal(SIGINT, SIG_IGN);
 
     while (true) {
         GetCommandInput(&userCommandInput);

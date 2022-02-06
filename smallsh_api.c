@@ -130,14 +130,15 @@ void ExitCommand(void) {
 
 void GetCommandInput(char** userInputAddr) {
     char* input = NULL;
+    int charsRead;
     size_t inputLength = 2048;
     printf("%s", PROMPT);
     fflush(stdout);
     // let the user input command
-    if (getline(&input, &inputLength + 1, stdin) != -1) {
+    if ((charsRead = getline(&input, &inputLength, stdin)) != -1) {
         // valid input
         *userInputAddr = calloc(MAX_CMD_LN_CHRS + 1, sizeof(char));
-        input[strcspn(input, "\n") - 1] = '\0';
+        input[charsRead - 1] = '\0';
         strcpy(*userInputAddr, input);
     }
     else clearerr(stdin);
@@ -168,7 +169,10 @@ void ProcessCommandLine(char* userCommandLine,
     // freed end of while loop if allocated
     char* expToken = NULL;
     // check to ignore comment/blank lines
-    if (CheckForCommentLine(lineToken)) return;
+    if (CheckForCommentLine(lineToken)) {
+        CheckChildrenStatus();
+        return;
+    }
     
     // freed in main, as well as all parts that are dynamic
     *userStructAddr = calloc(1, sizeof(struct command));
@@ -260,10 +264,8 @@ int StatusCommand(int status) {
 
 void OtherCommand(int* resultStatus,
     struct command* commandStruct) {
-    // register SIGINT on parent and bg children to ignore(inherit).
-    signal(SIGINT, SIG_IGN);
     pid_t childPid = fork();
-    int childStatus;
+    int childStatus = 0;
 
     switch (childPid) {
         case -1:
@@ -272,34 +274,33 @@ void OtherCommand(int* resultStatus,
         case 0:
             // fork is sucessful, give child spawn command info
             // to execute
-            signal(SIGINT, SIG_DFL);
+            if (flag == 1 || !commandStruct->isBackgroundProc) {
+                signal(SIGINT, SIG_DFL);
+            }
+            // register SIGTSTP on children to ignore.
+            signal(SIGTSTP, SIG_IGN);
             ChildFork(commandStruct);
             break;
         default:
-            // register SIGTSTP on children to ignore.
-            signal(SIGTSTP, SIG_IGN);
-
             if (commandStruct->isBackgroundProc) {
                 // if the flag is on, then the background proc must
                 // be ran as a foreground program
-                if (flag == 1) {
-                    signal(SIGINT, SIG_DFL);
+                if (flag == 1) {                    
                     childPid = waitpid(childPid, &childStatus, 0);
                 }
                 else {
                     // return without waiting on the process to end
-                    processList[numBackgroundTotal] = waitpid(-1, &childStatus, WNOHANG);
+                    processList[numBackgroundTotal] = childPid;
+                    waitpid(childPid, &childStatus, WNOHANG);
                     // this count is needed for my process list 
                     ++numBackgroundTotal;
                     // this is current count for exit termination
                     ++numBackgroundCurrent;
-                    printf("background pid is %d", childPid);
+                    printf("background pid is %d\n", childPid);
                     fflush(stdout);
                 }
             }
             else {
-                // register SIGINT to not ignore in fg child
-                signal(SIGINT, SIG_DFL);
                 childPid = waitpid(childPid, &childStatus, 0);
             }
     }
@@ -308,17 +309,7 @@ void OtherCommand(int* resultStatus,
         StatusCommand(*resultStatus);
     }
     // point before returning to command line
-    for (int i = 0; i < numBackgroundTotal; ++i) {
-        if (WIFEXITED(waitpid(processList[i], &childStatus, WNOHANG))) {
-            if (!processList[i]) {
-                processExited[i] = true;
-                printf("background pid %d is done: ", processList[i]);
-                fflush(stdout);
-                StatusCommand(childStatus);
-                --numBackgroundCurrent;
-            }
-        }
-    }
+    CheckChildrenStatus();
     return;
 }
 
@@ -332,8 +323,38 @@ void ChildFork(struct command* commandStruct) {
     for (int i = 0; i < commandStruct->argListSize; ++i) {
         newargv[i + 1] = commandStruct->argList[i];
     }
-
     // if files are involved
+
+    // case 1: input bg process and SIGTSTP is off
+    if (flag == 0 && commandStruct->isBackgroundProc) {
+        // must redirect to /dev/null
+        if (commandStruct->inputFile == NULL) {
+            VerifyInputRedirection(DEV_NULL, &sourceFD);
+            sourceResult = dup2(sourceFD, 0);
+            if (sourceResult < 0) {
+                perror("source dup2()");
+                exit(2);
+            }
+            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+        }
+    }
+
+    // case 2: output bg process and SIGTSTP is off
+    if (flag == 0 && commandStruct->isBackgroundProc) {
+        // must redirect to /dev/null
+        if (commandStruct->outputFile == NULL) {
+            VerifyInputRedirection(DEV_NULL, &sourceFD);
+            sourceResult = dup2(sourceFD, 0);
+            if (sourceResult < 0) {
+                perror("source dup2()");
+                exit(2);
+            }
+            fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
+        }
+    }
+
+    // case 3: input fg process and there's an input file, TSTP on
+    // defaults to fg
     if (commandStruct->inputFile != NULL) {
         VerifyInputRedirection(commandStruct->inputFile, &sourceFD);
         sourceResult = dup2(sourceFD, 0);
@@ -344,6 +365,8 @@ void ChildFork(struct command* commandStruct) {
         fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
     }
 
+    // case 4: output fg process and there's an output file, TSTP on
+    // defaults to fg
     if (commandStruct->outputFile != NULL) {
         VerifyOutputRedirection(commandStruct->outputFile, &targetFD);
         outResult = dup2(targetFD, 1);
@@ -353,6 +376,7 @@ void ChildFork(struct command* commandStruct) {
         }
         fcntl(targetFD, F_SETFD, FD_CLOEXEC);
     }
+
     // attempt to execute other command
     execvp(commandStruct->cmd, newargv);
     // beyond this point, if command fails print error and set exit 1
@@ -408,3 +432,19 @@ void SIGTSTP_Off(int sig) {
     return;
 }
 
+void CheckChildrenStatus(void) {
+    int childStatus;
+    // check background processes returning to command line
+    for (int i = 0; i < numBackgroundTotal; ++i) {
+        if (waitpid(processList[i], &childStatus, WNOHANG) > 0) {
+            if (!processExited[i]) {
+                processExited[i] = true;
+                printf("background pid %d is done: ", processList[i]);
+                fflush(stdout);
+                StatusCommand(childStatus);
+                --numBackgroundCurrent;
+            }
+        }
+    }
+    return;
+}

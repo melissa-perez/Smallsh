@@ -19,11 +19,11 @@
 
 #define MAX_ARGS 512
 #define MAX_CMD_LN_CHRS 2048
+#define MAX_PROCESSES 200
 #define PROMPT ":"
 #define VAR_EXPR "$$"
 #define HOME "HOME"
-#define MAX_PROC 25
-#define MAX_PROCESSES 200
+#define DEV_NULL "/dev/null"
  
 static volatile sig_atomic_t flag;
 static int numBackgroundTotal;
@@ -39,9 +39,10 @@ struct command {
 	char*	outputFile;
 	bool	isBackgroundProc;	
 };
-
+void CheckChildrenStatus(void);
 bool CheckForCommentLine(char*);
 int CheckForVariableExpression(char*);
+
 void ChildFork(struct command*);
 void CDCommand(struct command*);
 void Destructor(struct command*);
