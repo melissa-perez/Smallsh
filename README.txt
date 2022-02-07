@@ -18,5 +18,3 @@ make debug
 
 To clean the directory for peremeli_program3:
 make clean
-
-
