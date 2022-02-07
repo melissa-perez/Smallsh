@@ -3,7 +3,7 @@
     Author: Melissa Perez
     OSU ID: 934-326-989
     OSU email address: peremeli@oregonstate.edu
-    Last modified: 02/06/2022
+    Last modified: 02/05/2022
 
     Description: The smallsh.c program is a command
     line application reacreating aspects from command

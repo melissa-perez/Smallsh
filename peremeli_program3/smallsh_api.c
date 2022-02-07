@@ -379,9 +379,7 @@ void OtherCommand(int* resultStatus,
     // begin fork process
     pid_t childPid = fork();
     int childStatus = 0;
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGTSTP);
+
     switch (childPid) {
         case -1:
             perror("fork() failed!");
@@ -400,16 +398,13 @@ void OtherCommand(int* resultStatus,
             if (commandStruct->isBackgroundProc) {
                 // if the flag is on, then the background proc must
                 // be ran as a foreground program
-                if (flag == 1) {
-                    // print the signal SIGTSTP message after fg is done
-                    // ty Musa for making me double check
-                    sigprocmask(SIG_BLOCK, &mask, NULL);
+                if (flag == 1) {                    
                     childPid = waitpid(childPid, &childStatus, 0);
-                    sigprocmask(SIG_UNBLOCK, &mask, NULL);
                 }
                 else {
                     // return without waiting on the process to end
                     processList[numBackgroundTotal] = childPid;
+                    //waitpid(childPid, &childStatus, WNOHANG);
                     // this count is needed for my process list 
                     ++numBackgroundTotal;
                     // this is current count for exit termination
@@ -419,12 +414,7 @@ void OtherCommand(int* resultStatus,
                 }
             }
             else {
-                // print the signal SIGTSTP message after fg is done
-                // ty Musa for making me double check
-                sigprocmask(SIG_BLOCK, &mask, NULL);
                 childPid = waitpid(childPid, &childStatus, 0);
-                sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
             }
     }
     // store last foreground process result for status command
