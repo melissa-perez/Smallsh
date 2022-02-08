@@ -11,3 +11,4 @@ smallsh
 smallsh_api.c
 smallsh_api.h
 smallsh.c
+test

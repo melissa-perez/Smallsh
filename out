@@ -5,9 +5,12 @@ junk
 junk2
 Makefile
 mytestresults
+out
 p3testscript
 README.txt
 smallsh
 smallsh_api.c
 smallsh_api.h
 smallsh.c
+test
+testres

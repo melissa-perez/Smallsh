@@ -410,7 +410,8 @@ void OtherCommand(int* resultStatus,
                 else {
                     // return without waiting on the process to end
                     processList[numBackgroundTotal] = childPid;
-                    // this count is needed for my process list 
+                    // this count is needed for my process list
+                    //waitpid(childPid, &childStatus, WNOHANG);
                     ++numBackgroundTotal;
                     // this is current count for exit termination
                     ++numBackgroundCurrent;
@@ -424,15 +425,14 @@ void OtherCommand(int* resultStatus,
                 sigprocmask(SIG_BLOCK, &mask, NULL);
                 childPid = waitpid(childPid, &childStatus, 0);
                 sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
             }
     }
+    // check to see if any background processes ended first
+    CheckChildrenStatus();
     // store last foreground process result for status command
     *resultStatus = childStatus;
-    // if signal terminated, print the killing signal
+    // this is for foreground proc results, if signal terminated, print the killing signal
     if (WIFSIGNALED(*resultStatus)) StatusCommand(*resultStatus);
-    // point before returning to command line
-    CheckChildrenStatus();
     return;
 }
 
