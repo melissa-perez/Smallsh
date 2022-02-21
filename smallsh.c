@@ -1,8 +1,8 @@
 /*
     Assignment 3: smallsh
     Author: Melissa Perez
-    OSU ID: 934-326-989
-    OSU email address: peremeli@oregonstate.edu
+    OSU ID: removed
+    OSU email address: removed
     Last modified: 02/06/2022
 
     Description: The smallsh.c program is a command
