@@ -1,5 +1,5 @@
-Assignment 3: SMALLSH
-Student: MELISSA PEREZ
+Assignment 3: Smallsh
+Student: Melissa Perez
 
 To compile use make or run the command from 2:
 1. 
